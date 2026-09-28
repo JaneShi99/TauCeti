@@ -201,7 +201,7 @@ lemma baseChange_smul_baseChange (C : VariableChange R) (V : WeierstrassCurve R)
 variable {L} in
 /-- The base change of `C • V` to `L` is elliptic whenever that of `V` is, since it is
 `Cᴸ • Vᴸ`. -/
-instance isElliptic_baseChange_smul (C : VariableChange R) (V : WeierstrassCurve R)
+instance isElliptic_baseChange_smul (V : WeierstrassCurve R) (C : VariableChange R)
     [(V.baseChange L).IsElliptic] : ((C • V).baseChange L).IsElliptic := by
   rw [← baseChange_smul_baseChange]
   infer_instance

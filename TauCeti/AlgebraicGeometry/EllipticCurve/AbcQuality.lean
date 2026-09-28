@@ -36,7 +36,7 @@ evaluate to `0` by division by zero: a meaningful-looking number where there is 
 * `WeierstrassCurve.abcQuality_eq_of_j_div_eq`: the quality is computed by any triple of integers
   `a + b = c` with `a` and `c` coprime and `j / 1728 = a / c`, whatever the sign of `c`.
 * `WeierstrassCurve.abcQuality_eq_of_j_eq`: the quality depends on `j` alone. In particular it is
-  invariant under an admissible change of variables, `WeierstrassCurve.abcQuality_variableChange`.
+  invariant under an admissible change of variables, `WeierstrassCurve.variableChange_abcQuality`.
 * `WeierstrassCurve.abcQuality_pos`: the quality is positive.
 
 ## Implementation notes
@@ -123,7 +123,7 @@ theorem abcQuality_eq_of_j_eq (h : E.j ≠ 0 ∧ E.j ≠ 1728) {E' : Weierstrass
   simp only [abcQuality_def, hj]
 
 /-- The abc quality is invariant under an admissible change of variables over `ℚ`. -/
-theorem abcQuality_variableChange (C : VariableChange ℚ)
+theorem variableChange_abcQuality (C : VariableChange ℚ)
     (h' : (C • E).j ≠ 0 ∧ (C • E).j ≠ 1728) (h : E.j ≠ 0 ∧ E.j ≠ 1728) :
     (C • E).abcQuality h' = E.abcQuality h :=
   abcQuality_eq_of_j_eq _ h' h (variableChange_j E C)

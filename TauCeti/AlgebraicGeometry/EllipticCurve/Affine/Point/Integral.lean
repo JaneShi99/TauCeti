@@ -5,9 +5,11 @@ Authors: The Tau Ceti contributors
 -/
 module
 
-public import Mathlib.AlgebraicGeometry.EllipticCurve.Affine.Point
+public import TauCeti.AlgebraicGeometry.EllipticCurve.Affine.Point.VariableChange
+public import TauCeti.AlgebraicGeometry.EllipticCurve.VariableChange
 public import TauCeti.Data.Int.Quadratic
 import Mathlib.Data.Int.Interval
+import TauCeti.AlgebraicGeometry.EllipticCurve.Affine.Point.Basic
 
 /-!
 # Integral points of an integral Weierstrass equation
@@ -17,11 +19,18 @@ is kept over `ℤ`, so negation preserves integral points even when the model is
 search over a box of integer coordinates gives a certificate for every point in that box. No
 finiteness assertion is made for the set of all integral points.
 
-The set depends on the integral equation, rather than only on its rational isomorphism class.
+The set depends on the integral equation, rather than only on its rational isomorphism class. A
+change of variables `C` over `ℤ`, so with `u = ±1` and `r, s, t ∈ ℤ`, identifies the rational points
+of `C • W` and of `W` by `(x, y) ↦ (u²x + r, u³y + u²sx + t)`
+(`WeierstrassCurve.pointEquivVariableChange`), and this identification restricts to a bijection
+between their integral points (`WeierstrassCurve.bijOn_pointEquivVariableChange_integralPoints`).
+The restriction to changes of variables over `ℤ` matters: the scaling `(x, y) ↦ (u²x, u³y)` with
+`|u| > 1` identifies the rational points too, but not the integral ones, since a point `(X, Y)` of
+`W` corresponds to `(X / u², Y / u³)`.
 
 ## References
 
-* [J. Silverman, *The Arithmetic of Elliptic Curves*][silverman2009], III.2.
+* [J. Silverman, *The Arithmetic of Elliptic Curves*][silverman2009], III.1 and III.2.
 -/
 
 public section
@@ -198,6 +207,102 @@ theorem mem_integralPoints_iff_exists_mem_boundedIntegralPoints
     exact ⟨x, y, h, rfl, by omega, by omega⟩
   · rintro ⟨B, hB⟩
     exact W.boundedIntegralPoints_subset_integralPoints B hB
+
+/-! ### Changes of variables over `ℤ` -/
+
+section VariableChange
+
+variable (C : VariableChange ℤ)
+
+/-- **The rational points of `C • W` and of `W` are identified by a change of variables `C` over
+`ℤ`**: the group isomorphism `(x, y) ↦ (u²x + r, u³y + u²sx + t)`. It is
+`WeierstrassCurve.Affine.Point.equivVariableChange` for the base change of `C` to `ℚ`, read on the
+base change of `C • W`. -/
+def pointEquivVariableChange :
+    ((C • W).baseChange ℚ).toAffine.Point ≃+ (W.baseChange ℚ).toAffine.Point :=
+  (AddEquiv.cast (M := fun V : WeierstrassCurve ℚ ↦ V.toAffine.Point)
+    (baseChange_smul_baseChange ℚ C W).symm).trans
+    (Affine.Point.equivVariableChange (W.baseChange ℚ) (C.baseChange ℚ))
+
+/-- What the identification `pointEquivVariableChange` does to a rational point given by
+coordinates: it is the change of variables `C`, base changed to `ℚ`. -/
+@[simp]
+theorem pointEquivVariableChange_some {x y : ℚ}
+    (h : ((C • W).baseChange ℚ).toAffine.Nonsingular x y) :
+    W.pointEquivVariableChange C (.some x y h) =
+      .some (((C.baseChange ℚ).u : ℚ) ^ 2 * x + (C.baseChange ℚ).r)
+        (((C.baseChange ℚ).u : ℚ) ^ 3 * y + ((C.baseChange ℚ).u : ℚ) ^ 2 * (C.baseChange ℚ).s * x +
+          (C.baseChange ℚ).t)
+        ((Affine.variableChange_nonsingular (W.baseChange ℚ) (C.baseChange ℚ) x y).mpr
+          ((baseChange_smul_baseChange ℚ C W).symm ▸ h)) := by
+  rw [pointEquivVariableChange, AddEquiv.trans_apply, Affine.Point.cast_some,
+    Affine.Point.equivVariableChange_some]
+
+/-- What the inverse of the identification `pointEquivVariableChange` does to a rational point
+given by coordinates: it is the change of variables `C⁻¹`, base changed to `ℚ`. -/
+@[simp]
+theorem pointEquivVariableChange_symm_some {x y : ℚ}
+    (h : (W.baseChange ℚ).toAffine.Nonsingular x y) :
+    (W.pointEquivVariableChange C).symm (.some x y h) =
+      .some (((C.baseChange ℚ)⁻¹.u : ℚ) ^ 2 * x + (C.baseChange ℚ)⁻¹.r)
+        (((C.baseChange ℚ)⁻¹.u : ℚ) ^ 3 * y +
+          ((C.baseChange ℚ)⁻¹.u : ℚ) ^ 2 * (C.baseChange ℚ)⁻¹.s * x + (C.baseChange ℚ)⁻¹.t)
+        (baseChange_smul_baseChange ℚ C W ▸
+          (Affine.variableChange_nonsingular (C.baseChange ℚ • W.baseChange ℚ)
+            (C.baseChange ℚ)⁻¹ x y).mpr
+            ((inv_smul_smul (C.baseChange ℚ) (W.baseChange ℚ)).symm ▸ h)) := by
+  rw [pointEquivVariableChange, AddEquiv.symm_trans_apply,
+    Affine.Point.equivVariableChange_symm_some, AddEquiv.symm_apply_eq, Affine.Point.cast_some]
+
+/-- The identification `pointEquivVariableChange` sends the rational point of an integral solution
+`(x, y)` of `C • W` to that of the integral solution `(u²x + r, u³y + u²sx + t)` of `W`. -/
+@[simp]
+theorem pointEquivVariableChange_pointOfIntegralSolution (x y : ℤ)
+    (h : (C • W).toAffine.Equation x y) :
+    W.pointEquivVariableChange C ((C • W).pointOfIntegralSolution x y h) =
+      W.pointOfIntegralSolution ((C.u : ℤ) ^ 2 * x + C.r)
+        ((C.u : ℤ) ^ 3 * y + (C.u : ℤ) ^ 2 * C.s * x + C.t)
+        ((Affine.variableChange_equation W C x y).mpr h) := by
+  simp only [pointOfIntegralSolution, Affine.Point.mk, pointEquivVariableChange_some]
+  congr 1 <;> simp [VariableChange.baseChange]
+
+/-- The inverse of `pointEquivVariableChange` sends the rational point of an integral solution
+`(x, y)` of `W` to that of the integral solution of `C • W` given by the coordinates of `C⁻¹`. -/
+@[simp]
+theorem pointEquivVariableChange_symm_pointOfIntegralSolution (x y : ℤ)
+    (h : W.toAffine.Equation x y) :
+    (W.pointEquivVariableChange C).symm (W.pointOfIntegralSolution x y h) =
+      (C • W).pointOfIntegralSolution (((C⁻¹).u : ℤ) ^ 2 * x + (C⁻¹).r)
+        (((C⁻¹).u : ℤ) ^ 3 * y + ((C⁻¹).u : ℤ) ^ 2 * (C⁻¹).s * x + (C⁻¹).t)
+        ((Affine.variableChange_equation (C • W) C⁻¹ x y).mpr
+          ((inv_smul_smul C W).symm ▸ h)) := by
+  simp only [pointOfIntegralSolution, Affine.Point.mk, pointEquivVariableChange_symm_some]
+  congr 1 <;> simp [VariableChange.baseChange, ← VariableChange.map_inv]
+
+/-- **A change of variables over `ℤ` preserves and reflects integrality**: a rational point of
+`C • W` is integral exactly when its image under `pointEquivVariableChange` is an integral point
+of `W`. -/
+@[simp]
+theorem pointEquivVariableChange_mem_integralPoints_iff
+    (P : ((C • W).baseChange ℚ).toAffine.Point) :
+    W.pointEquivVariableChange C P ∈ W.integralPoints ↔ P ∈ (C • W).integralPoints := by
+  constructor
+  · rintro ⟨x, y, h, hP⟩
+    rw [← (W.pointEquivVariableChange C).symm_apply_apply P, hP,
+      pointEquivVariableChange_symm_pointOfIntegralSolution]
+    exact pointOfIntegralSolution_mem _ _ _ _
+  · rintro ⟨x, y, h, rfl⟩
+    rw [pointEquivVariableChange_pointOfIntegralSolution]
+    exact pointOfIntegralSolution_mem _ _ _ _
+
+/-- **A change of variables over `ℤ` is a bijection on integral points**: the identification
+`pointEquivVariableChange` of the rational points of `C • W` and of `W` maps the integral points
+of `C • W` bijectively onto those of `W`. -/
+theorem bijOn_pointEquivVariableChange_integralPoints :
+    Set.BijOn (W.pointEquivVariableChange C) (C • W).integralPoints W.integralPoints :=
+  (W.pointEquivVariableChange C).toEquiv.bijOn (W.pointEquivVariableChange_mem_integralPoints_iff C)
+
+end VariableChange
 
 end WeierstrassCurve
 
